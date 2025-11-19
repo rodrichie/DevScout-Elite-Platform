@@ -1,0 +1,80 @@
+name: 'devscout_dbt'
+version: '1.0.0'
+config-version: 2
+
+# Project profile
+profile: 'devscout_dbt'
+
+# Model paths
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Clean directories
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+# Model configurations
+models:
+  devscout_dbt:
+    # Bronze layer (raw data staging)
+    bronze:
+      +materialized: view
+      +schema: bronze
+      +tags: ['bronze', 'raw']
+    
+    # Silver layer (cleansed & enriched)
+    silver:
+      +materialized: table
+      +schema: silver
+      +tags: ['silver', 'cleansed']
+      +pre-hook:
+        - "{{ log('Running silver layer transformation: ' ~ this.identifier, info=True) }}"
+    
+    # Gold layer (business logic)
+    gold:
+      +materialized: table
+      +schema: gold
+      +tags: ['gold', 'business']
+      +post-hook:
+        - "{{ log('Completed gold layer table: ' ~ this.identifier, info=True) }}"
+        - "ANALYZE {{ this }}"
+
+# Test configurations
+tests:
+  +store_failures: true
+  +schema: test_failures
+
+# Documentation
+docs-paths: ["docs"]
+
+# Seeds configuration
+seeds:
+  devscout_dbt:
+    +schema: seeds
+
+# Snapshots configuration
+snapshots:
+  devscout_dbt:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Variables
+vars:
+  # Date range for incremental models
+  start_date: '2024-01-01'
+  
+  # Scoring weights
+  resume_weight: 0.4
+  github_weight: 0.3
+  coding_weight: 0.3
+  
+  # Thresholds
+  min_experience_years: 1
+  min_github_repos: 3
