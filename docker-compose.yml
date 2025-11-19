@@ -1,0 +1,510 @@
+version: "3.8"
+
+# =====================================
+# DevScout Elite Platform - Production Data Infrastructure
+# Components: Airflow, Kafka, Spark, MinIO, Postgres, Weaviate, Monitoring
+# =====================================
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.0-python3.10
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow_db
+    AIRFLOW__CORE__FERNET_KEY: "UKMzEm3yIuFYEq1y3-2FxPNWSVwRASpahmQ9kQfEr8E="
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "devscout_elite_secret_key_2024"
+    _PIP_ADDITIONAL_REQUIREMENTS: >
+      apache-airflow-providers-apache-spark==4.6.0
+      apache-airflow-providers-postgres==5.10.0
+      pyspark==3.5.0
+      boto3==1.34.20
+      great-expectations==0.18.8
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./scripts:/opt/airflow/scripts
+    - ./tests:/opt/airflow/tests
+    - airflow-logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+networks:
+  devscout-network:
+    name: devscout-network
+    driver: bridge
+
+volumes:
+  postgres-db-volume:
+  minio-data:
+  kafka-data:
+  zookeeper-data:
+  zookeeper-log:
+  airflow-logs:
+  spark-warehouse:
+  weaviate-data:
+  prometheus-data:
+  grafana-data:
+
+# =====================================
+# SERVICES
+# =====================================
+
+services:
+  # -------------------------
+  # PostgreSQL (Data Warehouse + Airflow Metadata)
+  # -------------------------
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: devscout-postgres
+    environment:
+      POSTGRES_USER: devscout
+      POSTGRES_PASSWORD: devscout_pass
+      POSTGRES_DB: devscout_dw
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sh:/docker-entrypoint-initdb.d/init.sh
+    networks:
+      - devscout-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devscout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------
+  # MinIO (S3-Compatible Data Lake)
+  # -------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: devscout-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - devscout-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: devscout-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb myminio/bronze-resumes --ignore-existing;
+      mc mb myminio/bronze-github --ignore-existing;
+      mc mb myminio/silver-processed --ignore-existing;
+      mc mb myminio/gold-analytics --ignore-existing;
+      mc mb myminio/mlflow-artifacts --ignore-existing;
+      mc mb myminio/delta-lake --ignore-existing;
+      mc anonymous set download myminio/bronze-resumes;
+      echo 'Buckets created successfully';
+      "
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Zookeeper (Kafka Dependency)
+  # -------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: devscout-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Kafka (Event Streaming)
+  # -------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: devscout-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - devscout-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kafka topic initialization
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: devscout-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: >
+      /bin/sh -c "
+      sleep 15;
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic resume-uploads --partitions 3 --replication-factor 1;
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic github-events --partitions 3 --replication-factor 1;
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic coding-challenge-events --partitions 5 --replication-factor 1;
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic ml-predictions --partitions 2 --replication-factor 1;
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic data-quality-alerts --partitions 1 --replication-factor 1;
+      echo 'Kafka topics created';
+      "
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Spark Master
+  # -------------------------
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: devscout-spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "8089:8080" # Spark Master UI
+      - "7077:7077" # Spark Master
+    volumes:
+      - ./spark_jobs:/opt/spark-jobs
+      - spark-warehouse:/opt/spark/warehouse
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Spark Worker
+  # -------------------------
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: devscout-spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./spark_jobs:/opt/spark-jobs
+      - spark-warehouse:/opt/spark/warehouse
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Apache Airflow (Orchestration)
+  # -------------------------
+  airflow-webserver:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.airflow
+    container_name: devscout-airflow-webserver
+    depends_on:
+      - postgres
+      - kafka
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://devscout:devscout_pass@postgres:5432/airflow_db
+      - AIRFLOW__CORE__FERNET_KEY=UjNpV3k5ZE1XQUh5TmR4WHJaX1lYOXN2Y0RBUzBqcGtfWEJfZkhNdTlZaz0=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=devscout_secret_key
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_ENDPOINT_URL=http://minio:9000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/config:/opt/airflow/config
+      - airflow-logs:/opt/airflow/logs
+      - ./spark_jobs:/opt/spark-jobs
+    command: >
+      bash -c "airflow db init &&
+               airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@devscout.com || true &&
+               airflow webserver"
+    networks:
+      - devscout-network
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.airflow
+    container_name: devscout-airflow-scheduler
+    depends_on:
+      - airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://devscout:devscout_pass@postgres:5432/airflow_db
+      - AIRFLOW__CORE__FERNET_KEY=UjNpV3k5ZE1XQUh5TmR4WHJaX1lYOXN2Y0RBUzBqcGtfWEJfZkhNdTlZaz0=
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_ENDPOINT_URL=http://minio:9000
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/config:/opt/airflow/config
+      - airflow-logs:/opt/airflow/logs
+      - ./spark_jobs:/opt/spark-jobs
+    command: airflow scheduler
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Weaviate (Vector Database)
+  # -------------------------
+  weaviate:
+    image: semitechnologies/weaviate:1.23.0
+    container_name: devscout-weaviate
+    ports:
+      - "8081:8080"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      ENABLE_MODULES: "text2vec-transformers"
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # MLflow (ML Experiment Tracking)
+  # -------------------------
+  mlflow:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.mlflow
+    container_name: devscout-mlflow
+    depends_on:
+      - postgres
+      - minio
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://devscout:devscout_pass@postgres:5432/mlflow_db
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://devscout:devscout_pass@postgres:5432/mlflow_db
+      --default-artifact-root s3://mlflow-artifacts
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Feast (Feature Store)
+  # -------------------------
+  feast:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.feast
+    container_name: devscout-feast
+    depends_on:
+      - postgres
+    ports:
+      - "6566:6566"
+    volumes:
+      - ./ml_models/feature_store:/feast
+      - feast-registry:/feast-registry
+    environment:
+      - FEAST_REGISTRY_PATH=/feast-registry/registry.db
+      - FEAST_ONLINE_STORE=postgres
+      - FEAST_OFFLINE_STORE=postgres
+      - FEAST_PG_HOST=postgres
+      - FEAST_PG_PORT=5432
+      - FEAST_PG_DATABASE=feast_db
+      - FEAST_PG_USER=devscout
+      - FEAST_PG_PASSWORD=devscout_pass
+    command: feast serve -h 0.0.0.0 -p 6566
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # FastAPI + GraphQL (API Layer)
+  # -------------------------
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: devscout-api
+    depends_on:
+      - postgres
+      - weaviate
+      - feast
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://devscout:devscout_pass@postgres:5432/devscout_dw
+      - WEAVIATE_URL=http://weaviate:8080
+      - FEAST_URL=http://feast:6566
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./api:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Streamlit Dashboard
+  # -------------------------
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: devscout-dashboard
+    depends_on:
+      - postgres
+      - api
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://devscout:devscout_pass@postgres:5432/devscout_dw
+      - API_URL=http://api:8000
+    volumes:
+      - ./dashboard:/app
+    command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Prometheus (Metrics Collection)
+  # -------------------------
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: devscout-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Grafana (Metrics Visualization)
+  # -------------------------
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: devscout-grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # dbt (Data Transformation)
+  # -------------------------
+  dbt:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.dbt
+    container_name: devscout-dbt
+    depends_on:
+      - postgres
+    volumes:
+      - ./dbt_project:/usr/app/dbt
+    environment:
+      - DBT_PROFILES_DIR=/usr/app/dbt
+      - DBT_PROJECT_DIR=/usr/app/dbt
+    working_dir: /usr/app/dbt
+    command: tail -f /dev/null # Keep container running
+    networks:
+      - devscout-network
+
+  # -------------------------
+  # Jupyter Notebook (Optional - For Development)
+  # -------------------------
+  jupyter:
+    build:
+      context: ./infrastructure/docker
+      dockerfile: Dockerfile.jupyter
+    container_name: devscout-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./spark_jobs:/home/jovyan/spark_jobs
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_ENDPOINT_URL=http://minio:9000
+    command: start-notebook.sh --NotebookApp.token='devscout'
+    networks:
+      - devscout-network
