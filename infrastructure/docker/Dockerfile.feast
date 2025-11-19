@@ -1,0 +1,18 @@
+FROM python:3.10-slim
+
+WORKDIR /feast
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Feast and dependencies
+RUN pip install --no-cache-dir \
+    feast==0.35.0 \
+    psycopg2-binary==2.9.9
+
+# Expose Feast port
+EXPOSE 6566
+
+CMD ["feast", "serve", "-h", "0.0.0.0", "-p", "6566"]
