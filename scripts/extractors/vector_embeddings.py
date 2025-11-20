@@ -39,15 +39,15 @@ class VectorEmbedder:
         
         if HAS_TRANSFORMERS:
             try:
-                logger.info(f"📥 Loading model: {model_name}...")
+                logger.info(f" Loading model: {model_name}...")
                 self.model = SentenceTransformer(model_name)
                 self.embedding_dim = self.model.get_sentence_embedding_dimension()
-                logger.info(f"✅ Model loaded: {model_name} ({self.embedding_dim} dimensions)")
+                logger.info(f" Model loaded: {model_name} ({self.embedding_dim} dimensions)")
             except Exception as e:
-                logger.error(f"❌ Failed to load model: {e}")
+                logger.error(f" Failed to load model: {e}")
                 self.model = None
         else:
-            logger.warning("⚠️ Transformers not available. Using mock embeddings.")
+            logger.warning(" Transformers not available. Using mock embeddings.")
     
     def encode(self, text: str, normalize: bool = True) -> np.ndarray:
         """
@@ -69,7 +69,7 @@ class VectorEmbedder:
                 )
                 return embedding
             except Exception as e:
-                logger.error(f"❌ Encoding failed: {e}")
+                logger.error(f" Encoding failed: {e}")
                 return self._mock_embedding()
         else:
             return self._mock_embedding()
@@ -97,10 +97,10 @@ class VectorEmbedder:
                     normalize_embeddings=normalize,
                     show_progress_bar=len(texts) > 100
                 )
-                logger.info(f"✅ Encoded {len(texts)} texts")
+                logger.info(f" Encoded {len(texts)} texts")
                 return embeddings
             except Exception as e:
-                logger.error(f"❌ Batch encoding failed: {e}")
+                logger.error(f" Batch encoding failed: {e}")
                 return np.array([self._mock_embedding() for _ in texts])
         else:
             return np.array([self._mock_embedding() for _ in texts])
@@ -213,12 +213,12 @@ class VectorEmbedder:
 if __name__ == "__main__":
     embedder = VectorEmbedder()
     
-    print(f"\n📊 Model Info: {embedder.get_model_info()}")
+    print(f"\n Model Info: {embedder.get_model_info()}")
     
     # Single text encoding
     text1 = "Python developer with 5 years experience in data engineering"
     embedding1 = embedder.encode(text1)
-    print(f"\n✅ Embedding shape: {embedding1.shape}")
+    print(f"\n Embedding shape: {embedding1.shape}")
     print(f"First 10 values: {embedding1[:10]}")
     
     # Batch encoding
@@ -228,17 +228,17 @@ if __name__ == "__main__":
         "Machine learning engineer with Python and TensorFlow"
     ]
     embeddings = embedder.batch_encode(texts)
-    print(f"\n✅ Batch embeddings shape: {embeddings.shape}")
+    print(f"\n Batch embeddings shape: {embeddings.shape}")
     
     # Similarity calculation
     text2 = "Data engineer with cloud and big data expertise"
     embedding2 = embedder.encode(text2)
     similarity = embedder.calculate_similarity(embedding1, embedding2)
-    print(f"\n🔍 Similarity between texts: {similarity:.3f}")
+    print(f"\n Similarity between texts: {similarity:.3f}")
     
     # Find most similar
     query = embedder.encode("Looking for Python data engineer")
     results = embedder.find_most_similar(query, embeddings, top_k=3)
-    print(f"\n🎯 Top matches:")
+    print(f"\n Top matches:")
     for idx, score in results:
         print(f"  {idx}: {texts[idx][:50]}... (score: {score:.3f})")
