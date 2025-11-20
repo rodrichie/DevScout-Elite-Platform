@@ -33,9 +33,9 @@ class GitHubEnricher:
         
         if self.token:
             self.headers['Authorization'] = f'token {self.token}'
-            logger.info("✅ GitHub client initialized with authentication")
+            logger.info(" GitHub client initialized with authentication")
         else:
-            logger.warning("⚠️ No GitHub token provided. Rate limit: 60 req/hour")
+            logger.warning(" No GitHub token provided. Rate limit: 60 req/hour")
     
     def fetch_user_profile(self, username: str) -> Optional[Dict]:
         """
@@ -53,7 +53,7 @@ class GitHubEnricher:
             
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"✅ Fetched profile: {username}")
+                logger.info(f" Fetched profile: {username}")
                 
                 return {
                     'username': data.get('login'),
@@ -71,14 +71,14 @@ class GitHubEnricher:
                     'avatar_url': data.get('avatar_url')
                 }
             elif response.status_code == 404:
-                logger.warning(f"❌ User not found: {username}")
+                logger.warning(f" User not found: {username}")
                 return None
             else:
-                logger.error(f"❌ GitHub API error: {response.status_code}")
+                logger.error(f" GitHub API error: {response.status_code}")
                 return None
                 
         except Exception as e:
-            logger.error(f"❌ Error fetching profile {username}: {e}")
+            logger.error(f" Error fetching profile {username}: {e}")
             return None
     
     def fetch_user_repos(self, username: str, max_repos: int = 100) -> List[Dict]:
@@ -139,11 +139,11 @@ class GitHubEnricher:
                 
                 page += 1
             
-            logger.info(f"✅ Fetched {len(repos)} repos for {username}")
+            logger.info(f" Fetched {len(repos)} repos for {username}")
             return repos
             
         except Exception as e:
-            logger.error(f"❌ Error fetching repos for {username}: {e}")
+            logger.error(f" Error fetching repos for {username}: {e}")
             return repos
     
     def fetch_user_commits(self, username: str, 
@@ -189,11 +189,11 @@ class GitHubEnricher:
                             'languages': [repo.get('language')]
                         })
             
-            logger.info(f"✅ Analyzed commits for {username} in {len(commits_by_repo)} repos")
+            logger.info(f" Analyzed commits for {username} in {len(commits_by_repo)} repos")
             return commits_by_repo
             
         except Exception as e:
-            logger.error(f"❌ Error fetching commits for {username}: {e}")
+            logger.error(f" Error fetching commits for {username}: {e}")
             return commits_by_repo
     
     def fetch_contribution_stats(self, username: str) -> Dict:
@@ -241,11 +241,11 @@ class GitHubEnricher:
                 'fetched_at': datetime.utcnow().isoformat()
             }
             
-            logger.info(f"✅ Computed contribution stats for {username}")
+            logger.info(f" Computed contribution stats for {username}")
             return stats
             
         except Exception as e:
-            logger.error(f"❌ Error computing stats for {username}: {e}")
+            logger.error(f" Error computing stats for {username}: {e}")
             return {'username': username, 'error': str(e)}
     
     def _calculate_account_age(self, profile: Dict) -> int:
@@ -285,7 +285,7 @@ class GitHubEnricher:
             return {'error': 'Could not fetch rate limit'}
             
         except Exception as e:
-            logger.error(f"❌ Error checking rate limit: {e}")
+            logger.error(f" Error checking rate limit: {e}")
             return {'error': str(e)}
 
 
@@ -296,24 +296,24 @@ if __name__ == "__main__":
     
     # Check rate limit
     rate_limit = enricher.check_rate_limit()
-    print(f"\n🔍 Rate Limit: {rate_limit}")
+    print(f"\n Rate Limit: {rate_limit}")
     
     # Test with a sample username
     username = "torvalds"  # Linus Torvalds as example
     
-    print(f"\n📊 Fetching data for: {username}")
+    print(f"\n Fetching data for: {username}")
     
     # Fetch profile
     profile = enricher.fetch_user_profile(username)
     if profile:
-        print(f"\n👤 Profile:")
+        print(f"\n Profile:")
         print(f"  Name: {profile['name']}")
         print(f"  Repos: {profile['public_repos']}")
         print(f"  Followers: {profile['followers']}")
     
     # Fetch contribution stats
     stats = enricher.fetch_contribution_stats(username)
-    print(f"\n📈 Contribution Stats:")
+    print(f"\n Contribution Stats:")
     print(f"  Total Repos: {stats.get('total_repos', 0)}")
     print(f"  Total Stars: {stats.get('total_stars', 0)}")
     print(f"  Commits (90d): {stats.get('commits_90_days', 0)}")
