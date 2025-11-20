@@ -41,7 +41,7 @@ default_args = {
 dag = DAG(
     'resume_etl_v1',
     default_args=default_args,
-    description='Extract, transform, and load resume data (Bronze → Silver)',
+    description='Extract, transform, and load resume data (Bronze  Silver)',
     schedule_interval='0 2 * * *',  # Daily at 2 AM UTC
     catchup=False,
     max_active_runs=1,
@@ -74,7 +74,7 @@ def watch_minio_bucket(**context):
     ]
     
     context['task_instance'].xcom_push(key='resume_files', value=resume_files)
-    print(f"✅ Found {len(resume_files)} resumes to process")
+    print(f" Found {len(resume_files)} resumes to process")
     return resume_files
 
 
@@ -104,11 +104,11 @@ def extract_text_from_resumes(**context):
                 'extracted_at': datetime.utcnow().isoformat()
             })
         except Exception as e:
-            print(f"❌ Error processing {file_key}: {str(e)}")
+            print(f" Error processing {file_key}: {str(e)}")
             continue
     
     context['task_instance'].xcom_push(key='extracted_texts', value=extracted_data)
-    print(f"✅ Extracted text from {len(extracted_data)} resumes")
+    print(f" Extracted text from {len(extracted_data)} resumes")
     return len(extracted_data)
 
 
@@ -140,11 +140,11 @@ def extract_skills_with_nlp(**context):
                 'entities_extracted_at': datetime.utcnow().isoformat()
             })
         except Exception as e:
-            print(f"❌ NLP error for {item['file_key']}: {str(e)}")
+            print(f" NLP error for {item['file_key']}: {str(e)}")
             continue
     
     context['task_instance'].xcom_push(key='enriched_data', value=enriched_data)
-    print(f"✅ Extracted entities from {len(enriched_data)} resumes")
+    print(f" Extracted entities from {len(enriched_data)} resumes")
     return len(enriched_data)
 
 
@@ -177,11 +177,11 @@ def generate_embeddings(**context):
                 'vector_generated_at': datetime.utcnow().isoformat()
             })
         except Exception as e:
-            print(f"❌ Embedding error for {item['file_key']}: {str(e)}")
+            print(f" Embedding error for {item['file_key']}: {str(e)}")
             continue
     
     context['task_instance'].xcom_push(key='vector_data', value=vector_data)
-    print(f"✅ Generated embeddings for {len(vector_data)} resumes")
+    print(f" Generated embeddings for {len(vector_data)} resumes")
     return len(vector_data)
 
 
@@ -203,9 +203,9 @@ def run_data_quality_checks(**context):
     validation_results = checker.validate_resume_data(vector_data)
     
     if not validation_results['success']:
-        raise ValueError(f"❌ Data quality checks failed: {validation_results['errors']}")
+        raise ValueError(f" Data quality checks failed: {validation_results['errors']}")
     
-    print(f"✅ Data quality checks passed")
+    print(f" Data quality checks passed")
     return validation_results
 
 
@@ -231,7 +231,7 @@ def load_to_silver_layer(**context):
     # Save vectors to Weaviate
     weaviate_ids = loader.save_to_weaviate(vector_data)
     
-    print(f"✅ Loaded {len(vector_data)} records to Silver layer")
+    print(f" Loaded {len(vector_data)} records to Silver layer")
     print(f"   - Parquet: {parquet_path}")
     print(f"   - Weaviate: {len(weaviate_ids)} vectors")
     
