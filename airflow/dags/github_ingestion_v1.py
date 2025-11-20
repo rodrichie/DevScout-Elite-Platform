@@ -79,7 +79,7 @@ def fetch_candidate_github_users(**context):
     conn.close()
     
     context['task_instance'].xcom_push(key='candidates', value=candidates)
-    print(f"✅ Found {len(candidates)} candidates to enrich")
+    print(f" Found {len(candidates)} candidates to enrich")
     return len(candidates)
 
 
@@ -112,11 +112,11 @@ def fetch_github_data(**context):
             })
             
         except Exception as e:
-            print(f"❌ Error fetching data for {candidate['github_username']}: {str(e)}")
+            print(f" Error fetching data for {candidate['github_username']}: {str(e)}")
             continue
     
     context['task_instance'].xcom_push(key='github_profiles', value=enriched_profiles)
-    print(f"✅ Fetched GitHub data for {len(enriched_profiles)} candidates")
+    print(f" Fetched GitHub data for {len(enriched_profiles)} candidates")
     return len(enriched_profiles)
 
 
@@ -146,11 +146,11 @@ def calculate_engineering_metrics(**context):
                 'calculated_at': datetime.utcnow().isoformat()
             })
         except Exception as e:
-            print(f"❌ Metrics calculation error: {str(e)}")
+            print(f" Metrics calculation error: {str(e)}")
             continue
     
     context['task_instance'].xcom_push(key='metrics_data', value=metrics_data)
-    print(f"✅ Calculated metrics for {len(metrics_data)} profiles")
+    print(f" Calculated metrics for {len(metrics_data)} profiles")
     return len(metrics_data)
 
 
@@ -196,7 +196,7 @@ def transform_with_spark(**context):
     
     spark.stop()
     
-    print(f"✅ Transformed and saved {flattened_df.count()} records to {output_path}")
+    print(f" Transformed and saved {flattened_df.count()} records to {output_path}")
     return output_path
 
 
@@ -264,7 +264,7 @@ def load_to_postgres(**context):
     cursor.close()
     conn.close()
     
-    print(f"✅ Loaded {len(insert_data)} records to Postgres")
+    print(f" Loaded {len(insert_data)} records to Postgres")
     return len(insert_data)
 
 
