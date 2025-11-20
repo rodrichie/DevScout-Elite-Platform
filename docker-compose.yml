@@ -62,9 +62,9 @@ services:
     image: ankane/pgvector:v0.5.1
     container_name: devscout-postgres
     environment:
-      POSTGRES_USER: devscout
-      POSTGRES_PASSWORD: devscout_pass
-      POSTGRES_DB: devscout_dw
+      POSTGRES_USER: ${POSTGRES_USER:-devscout}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devscout_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-devscout_dw}
     ports:
       - "5432:5432"
     volumes:
