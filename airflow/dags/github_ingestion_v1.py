@@ -19,6 +19,9 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+import psycopg2
+import json
+import os
 
 # Default arguments
 default_args = {
@@ -213,11 +216,11 @@ def load_to_postgres(**context):
     )
     
     conn = psycopg2.connect(
-        host="postgres",
-        port=5432,
-        database="devscout_dw",
-        user="devscout",
-        password="devscout_pass"
+        host=os.getenv('POSTGRES_HOST', 'postgres'),
+        port=int(os.getenv('POSTGRES_PORT', 5432)),
+        database=os.getenv('POSTGRES_DB', 'devscout_dw'),
+        user=os.getenv('POSTGRES_USER', 'devscout'),
+        password=os.getenv('POSTGRES_PASSWORD')
     )
     
     cursor = conn.cursor()
