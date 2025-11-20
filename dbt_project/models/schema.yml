@@ -1,0 +1,139 @@
+version: 2
+
+sources:
+  - name: silver
+    description: Silver layer tables with cleaned and validated data
+    database: devscout
+    schema: silver
+    tables:
+      - name: candidates
+        description: Candidate profile information
+        columns:
+          - name: candidate_id
+            description: Primary key
+            tests:
+              - unique
+              - not_null
+          - name: email
+            description: Candidate email
+            tests:
+              - unique
+              - not_null
+      
+      - name: resume_skills
+        description: Skills extracted from resumes
+        columns:
+          - name: candidate_id
+            description: Foreign key to candidates
+            tests:
+              - not_null
+              - relationships:
+                  to: ref('stg_candidates')
+                  field: candidate_id
+      
+      - name: github_profiles
+        description: GitHub profile and activity data
+        columns:
+          - name: candidate_id
+            description: Foreign key to candidates
+            tests:
+              - unique
+              - not_null
+
+models:
+  - name: stg_candidates
+    description: Staged candidates with deduplication
+    columns:
+      - name: candidate_id
+        description: Primary key
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: Candidate email (unique)
+        tests:
+          - unique
+          - not_null
+  
+  - name: stg_resume_skills
+    description: Staged resume skills
+    columns:
+      - name: candidate_id
+        tests:
+          - not_null
+      - name: skill_name
+        tests:
+          - not_null
+  
+  - name: stg_github_profiles
+    description: Staged GitHub profiles with calculated scores
+    columns:
+      - name: candidate_id
+        tests:
+          - unique
+          - not_null
+      - name: overall_github_score
+        description: Weighted GitHub performance score
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+  
+  - name: dim_candidates
+    description: Candidate dimension with all attributes
+    columns:
+      - name: candidate_id
+        tests:
+          - unique
+          - not_null
+      - name: email
+        tests:
+          - unique
+          - not_null
+  
+  - name: dim_skills
+    description: Skills dimension with popularity metrics
+    columns:
+      - name: skill_name
+        tests:
+          - unique
+          - not_null
+      - name: candidate_count
+        description: Number of candidates with this skill
+        tests:
+          - not_null
+  
+  - name: fact_candidate_scores
+    description: Candidate scoring fact table
+    columns:
+      - name: candidate_id
+        tests:
+          - unique
+          - not_null
+      - name: overall_score
+        description: Final weighted score
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+  
+  - name: agg_candidate_rankings
+    description: Candidate rankings with percentiles and tiers
+    columns:
+      - name: rank
+        description: Overall rank (1 is best)
+        tests:
+          - unique
+          - not_null
+      - name: candidate_id
+        tests:
+          - unique
+          - not_null
+      - name: percentile_rank
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
