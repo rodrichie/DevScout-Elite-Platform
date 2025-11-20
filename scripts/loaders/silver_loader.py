@@ -38,12 +38,12 @@ class SilverLoader:
         if HAS_PSYCOPG2:
             try:
                 self.connection = self._connect()
-                logger.info("✅ Database connection established")
+                logger.info(" Database connection established")
             except Exception as e:
-                logger.error(f"❌ Failed to connect to database: {e}")
+                logger.error(f" Failed to connect to database: {e}")
                 self.connection = None
         else:
-            logger.warning("⚠️ psycopg2 not available. Database operations disabled.")
+            logger.warning(" psycopg2 not available. Database operations disabled.")
     
     def _get_default_config(self) -> Dict:
         """Get default database config from environment."""
@@ -70,7 +70,7 @@ class SilverLoader:
             Candidate ID (int)
         """
         if not self.connection:
-            logger.error("❌ No database connection")
+            logger.error(" No database connection")
             return -1
         
         try:
@@ -120,11 +120,11 @@ class SilverLoader:
             self.connection.commit()
             cursor.close()
             
-            logger.info(f"✅ Loaded candidate: {candidate_id}")
+            logger.info(f" Loaded candidate: {candidate_id}")
             return candidate_id
             
         except Exception as e:
-            logger.error(f"❌ Error loading candidate: {e}")
+            logger.error(f" Error loading candidate: {e}")
             self.connection.rollback()
             return -1
     
@@ -142,7 +142,7 @@ class SilverLoader:
             Number of skills inserted
         """
         if not self.connection:
-            logger.error("❌ No database connection")
+            logger.error(" No database connection")
             return 0
         
         try:
@@ -187,11 +187,11 @@ class SilverLoader:
             self.connection.commit()
             cursor.close()
             
-            logger.info(f"✅ Loaded {len(skill_records)} skills for candidate {candidate_id}")
+            logger.info(f" Loaded {len(skill_records)} skills for candidate {candidate_id}")
             return len(skill_records)
             
         except Exception as e:
-            logger.error(f"❌ Error loading skills: {e}")
+            logger.error(f" Error loading skills: {e}")
             self.connection.rollback()
             return 0
     
@@ -210,7 +210,7 @@ class SilverLoader:
             Success boolean
         """
         if not self.connection:
-            logger.error("❌ No database connection")
+            logger.error(" No database connection")
             return False
         
         try:
@@ -282,11 +282,11 @@ class SilverLoader:
             self.connection.commit()
             cursor.close()
             
-            logger.info(f"✅ Loaded GitHub profile for candidate {candidate_id}")
+            logger.info(f" Loaded GitHub profile for candidate {candidate_id}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error loading GitHub profile: {e}")
+            logger.error(f" Error loading GitHub profile: {e}")
             self.connection.rollback()
             return False
     
@@ -312,7 +312,7 @@ class SilverLoader:
         """Close database connection."""
         if self.connection:
             self.connection.close()
-            logger.info("✅ Database connection closed")
+            logger.info(" Database connection closed")
 
 
 # Example usage
@@ -331,12 +331,12 @@ if __name__ == "__main__":
     
     # Load candidate
     candidate_id = loader.load_candidate(candidate_data)
-    print(f"✅ Candidate ID: {candidate_id}")
+    print(f" Candidate ID: {candidate_id}")
     
     # Load skills
     skills = ['Python', 'Apache Spark', 'Kafka', 'AWS', 'Docker']
     skills_count = loader.load_resume_skills(candidate_id, skills)
-    print(f"✅ Loaded {skills_count} skills")
+    print(f" Loaded {skills_count} skills")
     
     # Load GitHub profile
     github_data = {
@@ -357,6 +357,6 @@ if __name__ == "__main__":
     }
     
     success = loader.load_github_profile(candidate_id, github_data, metrics)
-    print(f"✅ GitHub profile loaded: {success}")
+    print(f" GitHub profile loaded: {success}")
     
     loader.close()
