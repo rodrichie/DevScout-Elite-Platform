@@ -53,7 +53,7 @@ class WeaviateLoader:
             for class_obj in schema['classes']:
                 self.client.schema.create_class(class_obj)
             
-            logger.info("✅ Weaviate schema created successfully")
+            logger.info(" Weaviate schema created successfully")
             return True
         except Exception as e:
             logger.error(f"Error creating schema: {e}")
@@ -111,7 +111,7 @@ class WeaviateLoader:
                         uuid=uuid
                     )
             
-            logger.info(f"✅ Loaded {len(candidates)} candidates to Weaviate")
+            logger.info(f" Loaded {len(candidates)} candidates to Weaviate")
             return len(candidates)
             
         except Exception as e:
@@ -161,7 +161,7 @@ class WeaviateLoader:
                         uuid=uuid
                     )
             
-            logger.info(f"✅ Loaded {len(skills)} skills to Weaviate")
+            logger.info(f" Loaded {len(skills)} skills to Weaviate")
             return len(skills)
             
         except Exception as e:
