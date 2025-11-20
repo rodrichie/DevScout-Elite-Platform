@@ -49,12 +49,12 @@ class CodingEventProducer:
                     retries=3,
                     max_in_flight_requests_per_connection=1
                 )
-                logger.info(f"✅ Kafka producer connected to {self.bootstrap_servers}")
+                logger.info(f" Kafka producer connected to {self.bootstrap_servers}")
             except Exception as e:
-                logger.error(f"❌ Failed to connect to Kafka: {e}")
+                logger.error(f" Failed to connect to Kafka: {e}")
                 self.producer = None
         else:
-            logger.warning("⚠️ Kafka not available. Events will be logged only.")
+            logger.warning(" Kafka not available. Events will be logged only.")
     
     def send_event(self, event_data: Dict) -> bool:
         """
@@ -81,19 +81,19 @@ class CodingEventProducer:
                 # Wait for confirmation (blocking)
                 record_metadata = future.get(timeout=10)
                 
-                logger.info(f"✅ Event sent: {enriched_event['event_id']} "
+                logger.info(f" Event sent: {enriched_event['event_id']} "
                            f"(partition={record_metadata.partition}, offset={record_metadata.offset})")
                 return True
                 
             except KafkaError as e:
-                logger.error(f"❌ Kafka error: {e}")
+                logger.error(f" Kafka error: {e}")
                 return False
             except Exception as e:
-                logger.error(f"❌ Failed to send event: {e}")
+                logger.error(f" Failed to send event: {e}")
                 return False
         else:
             # Fallback: log event to console
-            logger.info(f"📝 Event (no Kafka): {json.dumps(enriched_event, indent=2)}")
+            logger.info(f" Event (no Kafka): {json.dumps(enriched_event, indent=2)}")
             return True
     
     def send_code_submission_event(self, candidate_id: int, 
@@ -220,13 +220,13 @@ class CodingEventProducer:
         """Flush any buffered events."""
         if self.producer:
             self.producer.flush()
-            logger.info("✅ Kafka producer flushed")
+            logger.info(" Kafka producer flushed")
     
     def close(self):
         """Close Kafka producer connection."""
         if self.producer:
             self.producer.close()
-            logger.info("✅ Kafka producer closed")
+            logger.info(" Kafka producer closed")
 
 
 # Example usage
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     producer = CodingEventProducer()
     
     # Simulate code submission
-    print("\n📤 Sending code submission event...")
+    print("\n Sending code submission event...")
     producer.send_code_submission_event(
         candidate_id=1,
         challenge_id="challenge_data_pipeline",
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     )
     
     # Simulate test results
-    print("\n📤 Sending test result event...")
+    print("\n Sending test result event...")
     producer.send_test_result_event(
         candidate_id=1,
         challenge_id="challenge_data_pipeline",
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     )
     
     # Simulate challenge completion
-    print("\n📤 Sending completion event...")
+    print("\n Sending completion event...")
     producer.send_challenge_completion_event(
         candidate_id=1,
         challenge_id="challenge_data_pipeline",
@@ -264,7 +264,7 @@ if __name__ == "__main__":
     )
     
     # Simulate live coding metric
-    print("\n📤 Sending live coding metric...")
+    print("\n Sending live coding metric...")
     producer.send_live_coding_metric(
         candidate_id=1,
         session_id="session_123",
@@ -276,4 +276,4 @@ if __name__ == "__main__":
     producer.flush()
     producer.close()
     
-    print("\n✅ All events sent successfully!")
+    print("\n All events sent successfully!")
