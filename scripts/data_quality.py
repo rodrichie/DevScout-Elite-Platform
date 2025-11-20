@@ -48,12 +48,12 @@ class DataQualityChecker:
                     os.makedirs(self.context_root_dir, exist_ok=True)
                     self.context = gx.get_context(mode="file", project_root_dir=self.context_root_dir)
                 
-                logger.info("✅ Great Expectations context initialized")
+                logger.info(" Great Expectations context initialized")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize GX context: {e}")
+                logger.error(f" Failed to initialize GX context: {e}")
                 self.context = None
         else:
-            logger.warning("⚠️ Great Expectations not available")
+            logger.warning(" Great Expectations not available")
     
     def validate_resume_data(self, data_dict: Dict) -> Dict:
         """
@@ -180,7 +180,7 @@ class DataQualityChecker:
             'validated_at': datetime.utcnow().isoformat()
         }
         
-        logger.info(f"✅ Resume validation: {passed}/{len(checks)} checks passed")
+        logger.info(f" Resume validation: {passed}/{len(checks)} checks passed")
         
         return results
     
@@ -280,7 +280,7 @@ class DataQualityChecker:
             'validated_at': datetime.utcnow().isoformat()
         }
         
-        logger.info(f"✅ GitHub validation: {passed}/{len(checks)} checks passed")
+        logger.info(f" GitHub validation: {passed}/{len(checks)} checks passed")
         
         return results
     
@@ -326,7 +326,7 @@ class DataQualityChecker:
             'validated_at': datetime.utcnow().isoformat()
         }
         
-        logger.info(f"✅ Batch validation complete: {total_passed}/{total_checks} checks passed "
+        logger.info(f" Batch validation complete: {total_passed}/{total_checks} checks passed "
                    f"({aggregated['overall_success_rate']}%)")
         
         return aggregated
@@ -340,7 +340,7 @@ class DataQualityChecker:
             log_to_db: Whether to persist to database
         """
         # Log to console
-        logger.info(f"📊 Validation Summary:")
+        logger.info(f" Validation Summary:")
         logger.info(f"  Type: {results['data_type']}")
         logger.info(f"  Passed: {results['passed']}/{results['total_checks']}")
         logger.info(f"  Success Rate: {results['success_rate']}%")
