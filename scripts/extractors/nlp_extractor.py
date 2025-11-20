@@ -95,7 +95,7 @@ class NLPExtractor:
             'High School': [r'high school', r'secondary', r'diploma']
         }
         
-        logger.info(f"✅ NLP Extractor initialized with {len(self.all_skills)} skills")
+        logger.info(f" NLP Extractor initialized with {len(self.all_skills)} skills")
     
     def extract_entities(self, text: str) -> Dict:
         """
@@ -120,7 +120,7 @@ class NLPExtractor:
             'extracted_at': datetime.utcnow().isoformat()
         }
         
-        logger.info(f"✅ Extracted {len(entities['skills'])} skills, "
+        logger.info(f" Extracted {len(entities['skills'])} skills, "
                    f"{entities['years_experience']} years exp, "
                    f"{entities['education']} education")
         
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     
     entities = extractor.extract_entities(sample_text)
     
-    print("\n📊 Extracted Entities:")
+    print("\n Extracted Entities:")
     print(f"Skills: {entities['skills']}")
     print(f"Experience: {entities['years_experience']} years")
     print(f"Education: {entities['education']}")
