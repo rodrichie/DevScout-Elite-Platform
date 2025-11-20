@@ -66,9 +66,9 @@ class ResumeParser:
                     secret_key=os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin"),
                     secure=False
                 )
-                logger.info("✅ MinIO client initialized")
+                logger.info(" MinIO client initialized")
             except Exception as e:
-                logger.error(f"❌ Failed to initialize MinIO client: {e}")
+                logger.error(f" Failed to initialize MinIO client: {e}")
                 self.minio_client = None
         else:
             self.minio_client = None
@@ -89,7 +89,7 @@ class ResumeParser:
                 # Fallback: read from local filesystem
                 return self._extract_from_local(file_key)
             
-            logger.info(f"📄 Extracting text from: {file_key}")
+            logger.info(f" Extracting text from: {file_key}")
             
             # Get file from MinIO
             response = self.minio_client.get_object(bucket, file_key)
@@ -105,11 +105,11 @@ class ResumeParser:
             else:
                 raise ValueError(f"Unsupported file type: {file_key}")
             
-            logger.info(f"✅ Extracted {len(text)} characters from {file_key}")
+            logger.info(f" Extracted {len(text)} characters from {file_key}")
             return text
             
         except Exception as e:
-            logger.error(f"❌ Error extracting text from {file_key}: {e}")
+            logger.error(f" Error extracting text from {file_key}: {e}")
             return ""
     
     def _extract_from_pdf(self, pdf_bytes: bytes) -> str:
@@ -137,29 +137,29 @@ class ResumeParser:
                         text += page_text + "\n"
                 
                 if len(text.strip()) > 100:
-                    logger.info("✅ Native PDF text extraction successful")
+                    logger.info(" Native PDF text extraction successful")
                     return text
             except Exception as e:
-                logger.warning(f"⚠️ Native PDF extraction failed: {e}")
+                logger.warning(f" Native PDF extraction failed: {e}")
         
         # Fall back to OCR if native extraction failed
         if HAS_OCR and len(text.strip()) < 100:
             try:
-                logger.info("🔍 Attempting OCR extraction...")
+                logger.info(" Attempting OCR extraction...")
                 images = convert_from_bytes(pdf_bytes)
                 
                 ocr_text = ""
                 for i, image in enumerate(images):
                     page_text = pytesseract.image_to_string(image)
                     ocr_text += page_text + "\n"
-                    logger.info(f"📄 OCR page {i+1}: {len(page_text)} chars")
+                    logger.info(f" OCR page {i+1}: {len(page_text)} chars")
                 
                 if len(ocr_text.strip()) > len(text.strip()):
-                    logger.info("✅ OCR extraction successful")
+                    logger.info(" OCR extraction successful")
                     return ocr_text
                     
             except Exception as e:
-                logger.error(f"❌ OCR extraction failed: {e}")
+                logger.error(f" OCR extraction failed: {e}")
         
         return text if text else "Error: Could not extract text from PDF"
     
@@ -191,11 +191,11 @@ class ResumeParser:
                         text += cell.text + " "
                     text += "\n"
             
-            logger.info(f"✅ DOCX extraction successful: {len(text)} chars")
+            logger.info(f" DOCX extraction successful: {len(text)} chars")
             return text
             
         except Exception as e:
-            logger.error(f"❌ DOCX extraction failed: {e}")
+            logger.error(f" DOCX extraction failed: {e}")
             return f"Error: {str(e)}"
     
     def _extract_from_local(self, file_path: str) -> str:
@@ -220,7 +220,7 @@ class ResumeParser:
                 return "Error: Unsupported file type"
                 
         except Exception as e:
-            logger.error(f"❌ Local file extraction failed: {e}")
+            logger.error(f" Local file extraction failed: {e}")
             return f"Error: {str(e)}"
     
     def clean_text(self, text: str) -> str:
