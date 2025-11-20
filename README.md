@@ -424,6 +424,7 @@ kubectl logs -f deployment/fastapi -n devscout
 - **[API Reference](docs/API_REFERENCE.md)**: Complete REST API documentation with examples
 - **[Architecture Guide](docs/ARCHITECTURE.md)**: System design and data architecture
 - **[Project Guide](docs/PROJECT_GUIDE.md)**: Developer guide and workflows
+- **[Security Guidelines](docs/SECURITY.md)**: Security best practices and compliance
 - **[API Docs](http://localhost:8000/docs)**: Interactive Swagger UI
 - **[K8s Guide](k8s/README.md)**: Kubernetes deployment
 
