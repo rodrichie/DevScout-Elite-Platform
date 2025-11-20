@@ -15,20 +15,20 @@ try:
     HAS_DB = True
 except ImportError:
     HAS_DB = False
-    st.error("⚠️ psycopg2 not installed. Database features disabled.")
+    st.error(" psycopg2 not installed. Database features disabled.")
 
 try:
     from weaviate import Client
     HAS_WEAVIATE = True
 except ImportError:
     HAS_WEAVIATE = False
-    st.warning("⚠️ Weaviate client not installed. Vector search disabled.")
+    st.warning(" Weaviate client not installed. Vector search disabled.")
 
 
 # Page config
 st.set_page_config(
     page_title="DevScout Elite Dashboard",
-    page_icon="🎯",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -205,12 +205,12 @@ def fetch_pipeline_metrics(_conn):
 
 
 # Sidebar
-st.sidebar.title("🎯 DevScout Elite")
+st.sidebar.title(" DevScout Elite")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigate",
-    ["📊 Dashboard", "🔍 Candidate Search", "⚙️ Pipeline Monitoring", "📈 Analytics"]
+    [" Dashboard", " Candidate Search", " Pipeline Monitoring", " Analytics"]
 )
 
 st.sidebar.markdown("---")
@@ -220,8 +220,8 @@ st.sidebar.info(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 conn = get_db_connection()
 
 # Main content
-if page == "📊 Dashboard":
-    st.title("📊 DevScout Elite Dashboard")
+if page == " Dashboard":
+    st.title(" DevScout Elite Dashboard")
     st.markdown("Real-time hiring intelligence platform")
     
     # Summary metrics
@@ -262,7 +262,7 @@ if page == "📊 Dashboard":
     st.markdown("---")
     
     # Top Candidates Table
-    st.subheader("🏆 Top Candidates")
+    st.subheader(" Top Candidates")
     
     candidates_df = fetch_top_candidates(conn, limit=20)
     
@@ -287,7 +287,7 @@ if page == "📊 Dashboard":
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Top Skills Distribution")
+        st.subheader(" Top Skills Distribution")
         skills_df = fetch_skill_distribution(conn, top_n=10)
         
         if not skills_df.empty:
@@ -306,7 +306,7 @@ if page == "📊 Dashboard":
             st.info("No skill data available")
     
     with col2:
-        st.subheader("📈 Score Distribution")
+        st.subheader(" Score Distribution")
         
         if not candidates_df.empty:
             fig = px.histogram(
@@ -321,8 +321,8 @@ if page == "📊 Dashboard":
         else:
             st.info("No score data available")
 
-elif page == "🔍 Candidate Search":
-    st.title("🔍 Semantic Candidate Search")
+elif page == " Candidate Search":
+    st.title(" Semantic Candidate Search")
     st.markdown("Find candidates using natural language queries")
     
     # Search interface
@@ -337,7 +337,7 @@ elif page == "🔍 Candidate Search":
         max_results = st.number_input("Max Results", min_value=5, max_value=50, value=10)
     
     with col2:
-        search_button = st.button("🔍 Search", type="primary")
+        search_button = st.button(" Search", type="primary")
     
     if search_button and search_query:
         with st.spinner("Searching candidates..."):
@@ -373,7 +373,7 @@ elif page == "🔍 Candidate Search":
                         st.success(f"Found {len(results_df)} matching candidates")
                         
                         for idx, row in results_df.iterrows():
-                            with st.expander(f"🎯 {row['candidate_name']} (Score: {row['overall_score']:.1f})"):
+                            with st.expander(f" {row['candidate_name']} (Score: {row['overall_score']:.1f})"):
                                 col1, col2 = st.columns([2, 1])
                                 
                                 with col1:
@@ -396,8 +396,8 @@ elif page == "🔍 Candidate Search":
             else:
                 st.error("Database connection not available")
 
-elif page == "⚙️ Pipeline Monitoring":
-    st.title("⚙️ Pipeline Monitoring")
+elif page == " Pipeline Monitoring":
+    st.title(" Pipeline Monitoring")
     st.markdown("Monitor data pipeline execution and health")
     
     # Pipeline metrics
@@ -442,7 +442,7 @@ elif page == "⚙️ Pipeline Monitoring":
         )
         
         # Timeline chart
-        st.subheader("📊 Pipeline Execution Timeline")
+        st.subheader(" Pipeline Execution Timeline")
         
         fig = px.scatter(
             metrics_df,
@@ -458,15 +458,15 @@ elif page == "⚙️ Pipeline Monitoring":
     else:
         st.info("No pipeline metrics available yet.")
 
-elif page == "📈 Analytics":
-    st.title("📈 Advanced Analytics")
+elif page == " Analytics":
+    st.title(" Advanced Analytics")
     st.markdown("Deep dive into candidate trends and insights")
     
     candidates_df = fetch_top_candidates(conn, limit=100)
     
     if not candidates_df.empty:
         # Experience vs Score
-        st.subheader("📊 Experience vs Performance")
+        st.subheader(" Experience vs Performance")
         
         fig = px.scatter(
             candidates_df,
@@ -487,7 +487,7 @@ elif page == "📈 Analytics":
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("🌟 GitHub Activity")
+            st.subheader(" GitHub Activity")
             
             github_df = candidates_df[candidates_df['github_username'].notna()]
             
@@ -506,7 +506,7 @@ elif page == "📈 Analytics":
                 st.info("No GitHub data available")
         
         with col2:
-            st.subheader("💻 Language Distribution")
+            st.subheader(" Language Distribution")
             
             if not github_df.empty and 'top_language' in github_df.columns:
                 lang_counts = github_df['top_language'].value_counts().head(10)
@@ -527,7 +527,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center'>
-        <p>🎯 DevScout Elite Platform | Built with Streamlit, PostgreSQL & Weaviate</p>
+        <p> DevScout Elite Platform | Built with Streamlit, PostgreSQL & Weaviate</p>
         <p><small>Data refreshes every 60 seconds</small></p>
     </div>
     """,
