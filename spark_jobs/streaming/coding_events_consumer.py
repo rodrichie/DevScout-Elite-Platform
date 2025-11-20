@@ -43,7 +43,7 @@ def create_spark_session(app_name: str = "CodingEventsConsumer") -> SparkSession
     
     spark.sparkContext.setLogLevel("WARN")
     
-    logger.info(f"✅ Spark session created: {app_name}")
+    logger.info(f" Spark session created: {app_name}")
     
     return spark
 
@@ -88,13 +88,13 @@ def consume_coding_events(kafka_bootstrap_servers: str = "kafka:9092",
         postgres_url: PostgreSQL JDBC URL for output
     """
     if not HAS_SPARK:
-        logger.error("❌ PySpark not available")
+        logger.error(" PySpark not available")
         return
     
     spark = create_spark_session()
     
     # Read from Kafka
-    logger.info(f"📥 Subscribing to Kafka topic: {topic}")
+    logger.info(f" Subscribing to Kafka topic: {topic}")
     
     kafka_df = spark \
         .readStream \
@@ -185,7 +185,7 @@ def consume_coding_events(kafka_bootstrap_servers: str = "kafka:9092",
     
     # Write streams to console (for debugging) and PostgreSQL (for persistence)
     
-    logger.info("🚀 Starting streaming queries...")
+    logger.info(" Starting streaming queries...")
     
     # Console output for test aggregates
     query1 = test_aggregates \
@@ -213,7 +213,7 @@ def consume_coding_events(kafka_bootstrap_servers: str = "kafka:9092",
     
     # PostgreSQL output (if URL provided)
     if postgres_url:
-        logger.info("💾 Writing to PostgreSQL...")
+        logger.info(" Writing to PostgreSQL...")
         
         # Write completions to database
         query4 = completions_df \
@@ -256,10 +256,10 @@ def write_to_postgres(batch_df, table_name: str, jdbc_url: str):
             .mode("append") \
             .save()
         
-        logger.info(f"✅ Batch written to {table_name}: {batch_df.count()} rows")
+        logger.info(f" Batch written to {table_name}: {batch_df.count()} rows")
         
     except Exception as e:
-        logger.error(f"❌ Failed to write to PostgreSQL: {e}")
+        logger.error(f" Failed to write to PostgreSQL: {e}")
 
 
 if __name__ == "__main__":
@@ -269,7 +269,7 @@ if __name__ == "__main__":
         "jdbc:postgresql://postgres:5432/devscout"
     )
     
-    logger.info("🚀 Starting Spark Streaming Consumer...")
+    logger.info(" Starting Spark Streaming Consumer...")
     logger.info("Press Ctrl+C to stop")
     
     try:
@@ -279,6 +279,6 @@ if __name__ == "__main__":
             postgres_url=postgres_jdbc
         )
     except KeyboardInterrupt:
-        logger.info("\n⏹️ Consumer stopped by user")
+        logger.info("\n Consumer stopped by user")
     except Exception as e:
-        logger.error(f"❌ Consumer error: {e}")
+        logger.error(f" Consumer error: {e}")
