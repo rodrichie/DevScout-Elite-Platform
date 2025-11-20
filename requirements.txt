@@ -46,12 +46,17 @@ python-magic==0.4.27
 # Vector Database Clients
 weaviate-client==4.4.0
 
-# API Development
-fastapi==0.108.0
-uvicorn[standard]==0.25.0
+# API Development & Authentication
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 pydantic==2.5.3
 pydantic-settings==2.1.0
+
+# Load Testing
+locust==2.20.0
 
 # GitHub API
 PyGithub==2.1.1
@@ -120,8 +125,6 @@ jsonschema==4.20.0
 
 # Encryption & Security
 cryptography==41.0.7
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
 
 # Type Hints & Annotations
 types-requests==2.31.0.20231231
