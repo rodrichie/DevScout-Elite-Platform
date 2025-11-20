@@ -9,7 +9,7 @@ from typing import List, Optional
 import os
 import logging
 
-from .routers import candidates, skills, github, analytics
+from .routers import candidates, skills, github, analytics, semantic, auth
 from .models.database import engine, Base
 
 # Configure logging
@@ -38,10 +38,12 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(candidates.router, prefix="/api/v1/candidates", tags=["candidates"])
 app.include_router(skills.router, prefix="/api/v1/skills", tags=["skills"])
 app.include_router(github.router, prefix="/api/v1/github", tags=["github"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(semantic.router, prefix="/api/v1/semantic", tags=["semantic-search"])
 
 
 @app.get("/")
