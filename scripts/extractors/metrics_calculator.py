@@ -26,7 +26,7 @@ class MetricsCalculator:
             'recency': 0.10
         }
         
-        logger.info("✅ Metrics calculator initialized")
+        logger.info(" Metrics calculator initialized")
     
     def calculate_all_metrics(self, github_stats: Dict) -> Dict:
         """
@@ -64,7 +64,7 @@ class MetricsCalculator:
             'followers': github_stats.get('followers', 0)
         }
         
-        logger.info(f"✅ Calculated metrics for {metrics['username']}: "
+        logger.info(f" Calculated metrics for {metrics['username']}: "
                    f"Overall={metrics['overall_score']:.2f}")
         
         return metrics
@@ -353,11 +353,11 @@ if __name__ == "__main__":
     # Calculate metrics
     metrics = calculator.calculate_all_metrics(sample_stats)
     
-    print("\n📊 Calculated Metrics:")
+    print("\n Calculated Metrics:")
     print(f"  Code Quality: {metrics['code_quality_score']}")
     print(f"  Contribution: {metrics['contribution_score']}")
     print(f"  Impact: {metrics['impact_score']}")
     print(f"  Consistency: {metrics['consistency_score']}")
     print(f"  Diversity: {metrics['diversity_score']}")
     print(f"  Recency: {metrics['recency_score']}")
-    print(f"\n  🏆 Overall Score: {metrics['overall_score']}/100")
+    print(f"\n   Overall Score: {metrics['overall_score']}/100")
