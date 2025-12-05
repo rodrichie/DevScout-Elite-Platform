@@ -1,0 +1,103 @@
+John Doe
+Senior Software Engineer
+
+Contact:
+Email: john.doe@example.com
+Phone: +1 (555) 123-4567
+LinkedIn: linkedin.com/in/johndoe
+GitHub: github.com/johndoe
+
+SUMMARY
+Experienced software engineer with 7 years of expertise in building scalable distributed systems. 
+Strong background in Python, Java, and cloud technologies. Passionate about data engineering and 
+machine learning applications.
+
+EXPERIENCE
+
+Senior Software Engineer | Tech Corp Inc. | 2021 - Present
+- Led development of real-time data pipeline processing 10M+ events/day using Apache Kafka and Spark
+- Designed and implemented microservices architecture on AWS using Docker and Kubernetes
+- Mentored team of 5 junior engineers and conducted code reviews
+- Technologies: Python, Java, Kafka, Spark, PostgreSQL, Redis, Docker, Kubernetes, AWS
+
+Software Engineer | StartupXYZ | 2018 - 2021
+- Built RESTful APIs using FastAPI and Django serving 100K+ daily requests
+- Implemented ML models for recommendation system with 85% accuracy
+- Optimized database queries reducing latency by 60%
+- Technologies: Python, Django, FastAPI, PostgreSQL, Redis, Pandas, Scikit-learn
+
+Junior Developer | WebSolutions LLC | 2016 - 2018
+- Developed web applications using React and Node.js
+- Created automated testing framework increasing test coverage to 80%
+- Technologies: JavaScript, React, Node.js, MongoDB, Jest
+
+EDUCATION
+
+Master of Science in Computer Science
+University of Technology | 2014 - 2016
+GPA: 3.8/4.0
+Thesis: "Distributed Systems for Real-Time Data Processing"
+
+Bachelor of Science in Computer Engineering
+State University | 2010 - 2014
+GPA: 3.6/4.0
+
+TECHNICAL SKILLS
+
+Programming Languages:
+- Expert: Python, Java, SQL
+- Advanced: JavaScript, Go, Scala
+- Intermediate: C++, Rust
+
+Frameworks & Libraries:
+- Python: Django, FastAPI, Flask, Pandas, NumPy, Scikit-learn, TensorFlow
+- Java: Spring Boot, Hibernate
+- JavaScript: React, Node.js, Express
+
+Data Engineering:
+- Apache Kafka, Apache Spark, Apache Airflow, Apache Flink
+- ETL/ELT pipelines, Data warehousing, Data lakes
+- dbt, Great Expectations
+
+Databases:
+- PostgreSQL, MySQL, MongoDB, Redis, Cassandra
+- Elasticsearch, Weaviate
+- Database design and optimization
+
+Cloud & DevOps:
+- AWS (EC2, S3, Lambda, RDS, ECS, EKS)
+- Docker, Kubernetes, Terraform
+- CI/CD: Jenkins, GitHub Actions, GitLab CI
+- Monitoring: Prometheus, Grafana, ELK Stack
+
+Machine Learning:
+- Supervised/Unsupervised learning
+- Neural networks, NLP, Computer Vision
+- MLOps: MLflow, Kubeflow
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect - Professional (2022)
+- Certified Kubernetes Administrator (CKA) (2021)
+- Google Cloud Professional Data Engineer (2020)
+
+PROJECTS
+
+GitHub Projects:
+- data-pipeline-framework: Framework for building scalable data pipelines (500+ stars)
+- ml-deployment-toolkit: Tools for deploying ML models to production (300+ stars)
+- api-monitoring-system: Real-time API monitoring and alerting (200+ stars)
+
+Open Source Contributions:
+- Apache Airflow: Fixed critical bugs in scheduler
+- Pandas: Performance optimization for large datasets
+- FastAPI: Documentation improvements
+
+ACHIEVEMENTS
+- Reduced infrastructure costs by 40% through optimization
+- Improved system reliability to 99.9% uptime
+- Published 5 technical blog posts on data engineering
+- Speaker at PyData Conference 2022
+
+LANGUAGES
+- English: Native
+- Spanish: Professional working proficiency
