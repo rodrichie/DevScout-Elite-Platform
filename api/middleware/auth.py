@@ -10,9 +10,13 @@ from typing import Optional
 import os
 
 # Configuration
-# WARNING: Generate a secure JWT secret key for production!
-# Run: python -c "import secrets; print(secrets.token_urlsafe(32))"
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+# WARNING: JWT_SECRET_KEY is REQUIRED in production!
+# Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise ValueError("JWT_SECRET_KEY environment variable is required in production")
+    SECRET_KEY = "dev-secret-key-not-for-production-use-only"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
