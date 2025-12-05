@@ -421,6 +421,7 @@ kubectl logs -f deployment/fastapi -n devscout
 
 ## Documentation
 
+- **[Testing Guide](docs/TESTING_GUIDE.md)**: Complete end-to-end testing workflow
 - **[API Reference](docs/API_REFERENCE.md)**: Complete REST API documentation with examples
 - **[Architecture Guide](docs/ARCHITECTURE.md)**: System design and data architecture
 - **[Project Guide](docs/PROJECT_GUIDE.md)**: Developer guide and workflows
