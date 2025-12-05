@@ -82,6 +82,19 @@ seed-data: ## Load sample data for testing
 
 ##@ Testing & Quality
 
+e2e-test: ## Run end-to-end tests (complete platform test)
+	@echo "$(BLUE)🎯 Running end-to-end tests...$(NC)"
+	@python tests/e2e_test.py
+
+upload-sample-data: ## Upload sample resumes to MinIO
+	@echo "$(BLUE)📤 Uploading sample data...$(NC)"
+	@python tests/upload_sample_data.py
+
+quick-test: ## Quick validation of core services
+	@echo "$(BLUE)⚡ Running quick tests...$(NC)"
+	@curl -s http://localhost:8000/health && echo "$(GREEN)✅ API is healthy$(NC)" || echo "$(RED)❌ API is down$(NC)"
+	@curl -s http://localhost:8080/health && echo "$(GREEN)✅ Airflow is healthy$(NC)" || echo "$(RED)❌ Airflow is down$(NC)"
+
 ci: ## Run all tests and quality checks (run this after setup)
 	@echo "$(BLUE)🧪 Running CI checks...$(NC)"
 	@echo ""
