@@ -1,6 +1,6 @@
 # DevScout Elite Platform - Complete Project Guide
 
-## 📖 Table of Contents
+## Table of Contents
 
 1. [Getting Started](#getting-started)
 2. [Architecture Deep Dive](#architecture-deep-dive)
@@ -13,7 +13,7 @@
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -64,7 +64,7 @@ Once running, access these URLs:
 
 ---
 
-## 🏗️ Architecture Deep Dive
+## Architecture Deep Dive
 
 ### The Medallion Architecture
 
@@ -100,7 +100,7 @@ DATA SOURCES → INGESTION → BRONZE → SILVER → GOLD → SERVING
 
 ---
 
-## 🌊 Data Flow Walkthrough
+## Data Flow Walkthrough
 
 ### Pipeline 1: Resume Processing
 
@@ -164,7 +164,7 @@ DATA SOURCES → INGESTION → BRONZE → SILVER → GOLD → SERVING
 
 ---
 
-## ⚙️ Running Pipelines
+## Running Pipelines
 
 ### Manual Triggers
 
@@ -216,7 +216,7 @@ make docs
 
 ---
 
-## 💻 Development Workflow
+## Development Workflow
 
 ### Adding a New Data Source
 
@@ -277,7 +277,7 @@ make test-coverage
 
 ---
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Unit Tests
 ```powershell
@@ -306,7 +306,7 @@ def validate_resume_data(data):
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Services Not Starting
 
@@ -338,7 +338,7 @@ docker-compose exec airflow-webserver airflow dags list-import-errors
 docker-compose exec postgres psql -U devscout -d devscout_dw -c "SELECT 1"
 
 # Reset database
-make clean  # ⚠️ WARNING: Deletes all data
+make clean  # WARNING: Deletes all data
 make up
 ```
 
@@ -354,7 +354,7 @@ docker-compose restart minio-init
 
 ---
 
-## 🚢 Production Deployment
+## Production Deployment
 
 ### AWS Deployment
 
@@ -407,7 +407,7 @@ resource "aws_rds_instance" "postgres" {
 
 ---
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 ### Metrics to Track
 
@@ -436,22 +436,22 @@ Access: http://localhost:3001
 
 ---
 
-## 🎓 For Recruiters
+## For Recruiters
 
 This project demonstrates:
 
-✅ **End-to-End Data Engineering**: Ingestion → Processing → Serving  
-✅ **Modern Data Stack**: Airflow, Spark, Kafka, dbt  
-✅ **Data Modeling**: Medallion architecture, star schema  
-✅ **Best Practices**: Testing, CI/CD, IaC  
-✅ **Advanced Analytics**: NLP, vector search, real-time streaming  
-✅ **Production-Ready**: Monitoring, error handling, scalability  
+- **End-to-End Data Engineering**: Ingestion -> Processing -> Serving
+- **Modern Data Stack**: Airflow, Spark, Kafka, dbt
+- **Data Modeling**: Medallion architecture, star schema
+- **Best Practices**: Testing, CI/CD, IaC
+- **Advanced Analytics**: NLP, vector search, real-time streaming
+- **Production-Ready**: Monitoring, error handling, scalability
 
 **Resume Highlight**: *"Built event-driven lakehouse processing 10k+ candidate profiles with 92% semantic accuracy using Kafka, Spark, and Weaviate"*
 
 ---
 
-## 📞 Support
+## Support
 
 - **Issues**: Open a GitHub issue
 - **Questions**: Contact [your.email@example.com]
@@ -459,4 +459,4 @@ This project demonstrates:
 
 ---
 
-**⭐ Star this repo if it helped you land your dream job!**
+**Star this repo if it helped you land your dream job!**

@@ -125,7 +125,7 @@ class ICandidateRepository(ABC):
 
 ## Migration Path
 
-### Phase 1: New Clean Endpoints ✅
+### Phase 1: New Clean Endpoints [Done]
 - Created parallel clean architecture implementation
 - New routers in `candidates_clean.py`
 - Can run alongside existing code

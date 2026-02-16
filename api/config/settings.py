@@ -177,20 +177,20 @@ def validate_settings_on_startup():
         settings = get_settings()
         
         # Log configuration (redact sensitive values)
-        print(f"✓ Environment: {settings.environment}")
-        print(f"✓ Database: {settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}")
-        print(f"✓ CORS Origins: {settings.cors_origins}")
-        print(f"✓ JWT Algorithm: {settings.jwt_algorithm}")
+        print(f"[OK] Environment: {settings.environment}")
+        print(f"[OK] Database: {settings.postgres_host}:{settings.postgres_port}/{settings.postgres_db}")
+        print(f"[OK] CORS Origins: {settings.cors_origins}")
+        print(f"[OK] JWT Algorithm: {settings.jwt_algorithm}")
         
         # Production-specific checks
         if settings.environment == "production":
             assert len(settings.jwt_secret_key) >= 32, "JWT secret too short"
             assert "*" not in settings.cors_origins, "CORS not restricted"
-            print("✓ Production security checks passed")
+            print("[OK] Production security checks passed")
         
         return True
     except Exception as e:
-        print(f"❌ Configuration validation failed: {e}")
+        print(f"[FAIL] Configuration validation failed: {e}")
         raise
 
 

@@ -164,15 +164,16 @@ make logs
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **FastAPI Swagger** | <http://localhost:8000/docs> | admin / secret |
-| Airflow | <http://localhost:8080> | airflow / airflow |
-| Streamlit Dashboard | <http://localhost:8501> | - |
-| Spark Master UI | <http://localhost:8081> | - |
-| MinIO Console | <http://localhost:9001> | minioadmin / minioadmin |
-| MLflow | <http://localhost:5000> | - |
-| Grafana | <http://localhost:3001> | admin / admin |
-| Prometheus | <http://localhost:9090> | - |
-| Weaviate | <http://localhost:8080> | - |
+| **API - Swagger UI** | <http://localhost:8011/docs> | admin / secret |
+| **API - ReDoc** | <http://localhost:8011/redoc> | - |
+| Streamlit Dashboard | <http://localhost:8513> | - |
+| Airflow | <http://localhost:8086> | admin / admin |
+| Spark Master UI | <http://localhost:8090> | - |
+| MinIO Console | <http://localhost:9021> | minioadmin / minioadmin |
+| MLflow | <http://localhost:5001> | - |
+| Grafana | <http://localhost:3002> | admin / admin |
+| Prometheus | <http://localhost:9091> | - |
+| Weaviate | <http://localhost:8083> | - |
 
 ---
 
@@ -223,37 +224,57 @@ make logs
 
 ## API Documentation
 
+The API provides interactive documentation via OpenAPI/Swagger:
+
+- **Swagger UI**: <http://localhost:8011/docs> -- Interactive API explorer with "Try it out" functionality
+- **ReDoc**: <http://localhost:8011/redoc> -- Clean, readable API reference
+- **OpenAPI JSON**: <http://localhost:8011/openapi.json> -- Machine-readable API specification
+
+The documentation includes detailed descriptions for every endpoint, request/response schemas, and authentication instructions.
+
 ### Authentication
 
 ```bash
 # Get access token
-curl -X POST "http://localhost:8000/api/v1/auth/token" \
+curl -X POST "http://localhost:8011/api/v1/auth/token" \
   -d "username=admin&password=secret"
 
 # Use token in requests
 curl -H "Authorization: Bearer <token>" \
-  "http://localhost:8000/api/v1/candidates"
+  "http://localhost:8011/api/v1/candidates"
 ```
 
 ### Key Endpoints
 
-#### Candidates
-- `GET /api/v1/candidates` - List candidates with pagination
-- `GET /api/v1/candidates/{id}` - Get candidate details
-- `GET /api/v1/candidates/{id}/skills` - Get candidate skills
-- `POST /api/v1/candidates/search` - Search candidates
+#### Authentication
+- `POST /api/v1/auth/token` - Obtain JWT access token
+- `GET /api/v1/auth/me` - Get current user profile
+- `POST /api/v1/auth/logout` - Logout
 
-#### Semantic Search
-- `GET /api/v1/semantic/search` - Natural language search
-- `GET /api/v1/semantic/similar/{id}` - Find similar candidates
-- `GET /api/v1/semantic/skills/semantic` - Semantic skill search
+#### Candidates
+- `GET /api/v1/candidates` - List candidates with pagination and score filtering
+- `GET /api/v1/candidates/{id}` - Get detailed candidate profile
+- `GET /api/v1/candidates/{id}/skills` - Get candidate's extracted skills
+- `POST /api/v1/candidates/search` - Search by name, email, or skill
+
+#### Skills
+- `GET /api/v1/skills` - List skills with candidate counts
+- `GET /api/v1/skills/categories` - Get skill categories
+- `GET /api/v1/skills/trending` - Get trending skills
+
+#### GitHub
+- `GET /api/v1/github/stats/top-contributors` - Top contributors by metric
+- `GET /api/v1/github/stats/languages` - Language distribution
+- `GET /api/v1/github/{username}` - Get GitHub profile
 
 #### Analytics
-- `GET /api/v1/analytics/summary` - Platform analytics
-- `GET /api/v1/analytics/pipeline-health` - Pipeline metrics
-- `GET /api/v1/analytics/trends/hiring` - Hiring trends
+- `GET /api/v1/analytics/summary` - Platform analytics summary
+- `GET /api/v1/analytics/pipeline-health` - Data pipeline health metrics
+- `GET /api/v1/analytics/trends/hiring` - Hiring trends and insights
 
-Full API documentation: <http://localhost:8000/docs>
+#### Semantic Search
+- `GET /api/v1/semantic/search` - Natural language candidate search
+- `GET /api/v1/semantic/stats` - Vector database statistics
 
 ---
 
@@ -426,7 +447,8 @@ kubectl logs -f deployment/fastapi -n devscout
 - **[Architecture Guide](docs/ARCHITECTURE.md)**: System design and data architecture
 - **[Project Guide](docs/PROJECT_GUIDE.md)**: Developer guide and workflows
 - **[Security Guidelines](docs/SECURITY.md)**: Security best practices and compliance
-- **[API Docs](http://localhost:8000/docs)**: Interactive Swagger UI
+- **[API Docs - Swagger UI](http://localhost:8011/docs)**: Interactive API explorer
+- **[API Docs - ReDoc](http://localhost:8011/redoc)**: Readable API reference
 - **[K8s Guide](k8s/README.md)**: Kubernetes deployment
 
 ---
