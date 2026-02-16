@@ -3,133 +3,145 @@ Candidates router - CRUD operations for candidates
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from sqlalchemy import text
+from typing import Optional
 import logging
 
-from ..models.database import get_db
-from ..models.schemas import CandidateResponse, CandidateCreate, SearchQuery
+from models.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.get("/", response_model=List[CandidateResponse])
+@router.get("/")
 async def get_candidates(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    min_score: Optional[float] = Query(None, ge=0, le=100),
+    min_score: Optional[int] = Query(None, ge=0, le=300),
     db: Session = Depends(get_db)
 ):
     """
-    Get list of candidates with pagination.
-    
-    - **skip**: Number of records to skip
-    - **limit**: Maximum number of records to return
-    - **min_score**: Minimum overall score filter
+    Get list of candidates with pagination and optional score filtering.
+
+    Returns candidates ranked by their composite score, including resume match,
+    GitHub contribution, and coding challenge scores from the gold layer.
     """
     try:
         query = """
-            SELECT 
-                c.candidate_id,
-                c.candidate_name,
-                c.email,
-                c.phone,
-                c.years_experience,
-                c.education_level,
-                c.skill_count,
-                c.github_username,
-                c.github_score,
-                r.overall_score,
-                r.rank,
-                c.created_at
-            FROM gold.dim_candidates c
-            LEFT JOIN gold.agg_candidate_rankings r ON c.candidate_id = r.candidate_id
-            WHERE 1=1
+            SELECT
+                dc.candidate_id,
+                dc.full_name,
+                dc.email,
+                dc.years_experience,
+                dc.education_level,
+                dc.primary_language,
+                sc.github_username,
+                r.total_score,
+                r.ranking_position,
+                r.percentile,
+                fs.resume_match_score,
+                fs.github_contribution_score,
+                fs.coding_challenge_score
+            FROM gold.dim_candidates dc
+            LEFT JOIN gold.agg_candidate_rankings r ON dc.candidate_key = r.candidate_key
+            LEFT JOIN gold.fact_candidate_scores fs ON dc.candidate_key = fs.candidate_key
+            LEFT JOIN silver.candidates sc ON dc.candidate_id = sc.candidate_id
+            WHERE dc.is_current = TRUE
         """
-        
+
         params = {}
-        
+
         if min_score is not None:
-            query += " AND r.overall_score >= :min_score"
+            query += " AND r.total_score >= :min_score"
             params['min_score'] = min_score
-        
-        query += " ORDER BY r.rank NULLS LAST LIMIT :limit OFFSET :skip"
+
+        query += " ORDER BY r.ranking_position NULLS LAST LIMIT :limit OFFSET :skip"
         params['limit'] = limit
         params['skip'] = skip
-        
-        result = db.execute(query, params)
+
+        result = db.execute(text(query), params)
         candidates = result.fetchall()
-        
+
         return [
             {
                 "candidate_id": row[0],
-                "candidate_name": row[1],
+                "full_name": row[1],
                 "email": row[2],
-                "phone": row[3],
-                "years_experience": row[4],
-                "education_level": row[5],
-                "skill_count": row[6],
-                "github_username": row[7],
-                "github_score": row[8] or 0,
-                "overall_score": row[9] or 0,
-                "rank": row[10],
-                "created_at": row[11]
+                "years_experience": row[3],
+                "education_level": row[4],
+                "primary_language": row[5],
+                "github_username": row[6],
+                "total_score": row[7] or 0,
+                "ranking_position": row[8],
+                "percentile": float(row[9]) if row[9] else 0,
+                "resume_match_score": row[10] or 0,
+                "github_contribution_score": row[11] or 0,
+                "coding_challenge_score": row[12] or 0,
             }
             for row in candidates
         ]
-        
+
     except Exception as e:
         logger.error(f"Error fetching candidates: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{candidate_id}", response_model=CandidateResponse)
+@router.get("/{candidate_id}")
 async def get_candidate(
     candidate_id: int,
     db: Session = Depends(get_db)
 ):
-    """Get detailed candidate information by ID."""
+    """
+    Get detailed candidate profile by ID.
+
+    Returns the full candidate profile including experience, education,
+    GitHub username, and individual score breakdowns from the scoring pipeline.
+    """
     try:
         query = """
-            SELECT 
-                c.candidate_id,
-                c.candidate_name,
-                c.email,
-                c.phone,
-                c.years_experience,
-                c.education_level,
-                c.skill_count,
-                c.github_username,
-                c.github_score,
-                r.overall_score,
-                r.rank,
-                c.created_at
-            FROM gold.dim_candidates c
-            LEFT JOIN gold.agg_candidate_rankings r ON c.candidate_id = r.candidate_id
-            WHERE c.candidate_id = :candidate_id
+            SELECT
+                dc.candidate_id,
+                dc.full_name,
+                dc.email,
+                dc.years_experience,
+                dc.education_level,
+                dc.primary_language,
+                sc.github_username,
+                r.total_score,
+                r.ranking_position,
+                r.percentile,
+                fs.resume_match_score,
+                fs.github_contribution_score,
+                fs.coding_challenge_score
+            FROM gold.dim_candidates dc
+            LEFT JOIN gold.agg_candidate_rankings r ON dc.candidate_key = r.candidate_key
+            LEFT JOIN gold.fact_candidate_scores fs ON dc.candidate_key = fs.candidate_key
+            LEFT JOIN silver.candidates sc ON dc.candidate_id = sc.candidate_id
+            WHERE dc.candidate_id = :candidate_id AND dc.is_current = TRUE
         """
-        
-        result = db.execute(query, {"candidate_id": candidate_id})
+
+        result = db.execute(text(query), {"candidate_id": candidate_id})
         row = result.fetchone()
-        
+
         if not row:
             raise HTTPException(status_code=404, detail="Candidate not found")
-        
+
         return {
             "candidate_id": row[0],
-            "candidate_name": row[1],
+            "full_name": row[1],
             "email": row[2],
-            "phone": row[3],
-            "years_experience": row[4],
-            "education_level": row[5],
-            "skill_count": row[6],
-            "github_username": row[7],
-            "github_score": row[8] or 0,
-            "overall_score": row[9] or 0,
-            "rank": row[10],
-            "created_at": row[11]
+            "years_experience": row[3],
+            "education_level": row[4],
+            "primary_language": row[5],
+            "github_username": row[6],
+            "total_score": row[7] or 0,
+            "ranking_position": row[8],
+            "percentile": float(row[9]) if row[9] else 0,
+            "resume_match_score": row[10] or 0,
+            "github_contribution_score": row[11] or 0,
+            "coding_challenge_score": row[12] or 0,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -142,33 +154,38 @@ async def get_candidate_skills(
     candidate_id: int,
     db: Session = Depends(get_db)
 ):
-    """Get all skills for a specific candidate."""
+    """
+    Get all skills extracted from a candidate's resume.
+
+    Returns skills with their categories and confidence scores as
+    determined by the NLP extraction pipeline.
+    """
     try:
         query = """
-            SELECT 
+            SELECT
                 skill_name,
                 skill_category,
-                proficiency_level
+                confidence_score
             FROM silver.resume_skills
             WHERE candidate_id = :candidate_id
             ORDER BY skill_category, skill_name
         """
-        
-        result = db.execute(query, {"candidate_id": candidate_id})
+
+        result = db.execute(text(query), {"candidate_id": candidate_id})
         skills = result.fetchall()
-        
+
         if not skills:
             raise HTTPException(status_code=404, detail="No skills found for candidate")
-        
+
         return [
             {
                 "skill_name": row[0],
                 "skill_category": row[1],
-                "proficiency_level": row[2]
+                "confidence_score": float(row[2]) if row[2] else 0,
             }
             for row in skills
         ]
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -178,65 +195,69 @@ async def get_candidate_skills(
 
 @router.post("/search")
 async def search_candidates(
-    search: SearchQuery,
+    search: dict,
     db: Session = Depends(get_db)
 ):
     """
-    Search candidates using natural language query.
-    Searches across resume text and skills.
+    Search candidates by name, email, or skill.
+
+    Accepts a JSON body with `query` (search term), `max_results` (default 10),
+    and optional `min_score` filter. Searches across candidate names, emails,
+    and extracted skill names.
     """
     try:
+        search_query = search.get("query", "")
+        max_results = search.get("max_results", 10)
+        min_score = search.get("min_score")
+
         query = """
             SELECT DISTINCT
-                c.candidate_id,
-                c.candidate_name,
-                c.email,
-                c.years_experience,
-                c.education_level,
-                c.skill_count,
-                r.overall_score,
-                r.rank
-            FROM gold.dim_candidates c
-            LEFT JOIN gold.agg_candidate_rankings r ON c.candidate_id = r.candidate_id
-            LEFT JOIN silver.candidates sc ON c.candidate_id = sc.candidate_id
-            LEFT JOIN silver.resume_skills rs ON c.candidate_id = rs.candidate_id
-            WHERE (
-                sc.resume_text ILIKE :query OR
-                rs.skill_name ILIKE :query OR
-                c.candidate_name ILIKE :query
-            )
+                dc.candidate_id,
+                dc.full_name,
+                dc.email,
+                dc.years_experience,
+                dc.education_level,
+                r.total_score,
+                r.ranking_position
+            FROM gold.dim_candidates dc
+            LEFT JOIN gold.agg_candidate_rankings r ON dc.candidate_key = r.candidate_key
+            LEFT JOIN silver.resume_skills rs ON dc.candidate_id = rs.candidate_id
+            WHERE dc.is_current = TRUE
+              AND (
+                dc.full_name ILIKE :query
+                OR rs.skill_name ILIKE :query
+                OR dc.email ILIKE :query
+              )
         """
-        
-        params = {"query": f"%{search.query}%"}
-        
-        if search.min_score:
-            query += " AND r.overall_score >= :min_score"
-            params['min_score'] = search.min_score
-        
-        query += " ORDER BY r.overall_score DESC NULLS LAST LIMIT :max_results"
-        params['max_results'] = search.max_results
-        
-        result = db.execute(query, params)
+
+        params = {"query": f"%{search_query}%", "max_results": max_results}
+
+        if min_score:
+            query += " AND r.total_score >= :min_score"
+            params['min_score'] = min_score
+
+        query += " ORDER BY r.total_score DESC NULLS LAST LIMIT :max_results"
+
+        result = db.execute(text(query), params)
         candidates = result.fetchall()
-        
+
         return {
-            "query": search.query,
+            "query": search_query,
             "results_count": len(candidates),
             "candidates": [
                 {
                     "candidate_id": row[0],
-                    "candidate_name": row[1],
+                    "full_name": row[1],
                     "email": row[2],
                     "years_experience": row[3],
                     "education_level": row[4],
-                    "skill_count": row[5],
-                    "overall_score": row[6] or 0,
-                    "rank": row[7]
+                    "total_score": row[5] or 0,
+                    "ranking_position": row[6],
                 }
                 for row in candidates
             ]
         }
-        
+
     except Exception as e:
         logger.error(f"Error searching candidates: {e}")
         raise HTTPException(status_code=500, detail=str(e))

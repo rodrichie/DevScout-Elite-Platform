@@ -3,165 +3,180 @@ Analytics router - Platform analytics and insights
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
-from ..models.database import get_db
-from ..models.schemas import AnalyticsResponse
+from models.database import get_db
 
 router = APIRouter()
 
 
-@router.get("/summary", response_model=AnalyticsResponse)
+@router.get("/summary")
 async def get_analytics_summary(db: Session = Depends(get_db)):
-    """Get overall platform analytics summary."""
+    """
+    Get overall platform analytics summary.
+
+    Returns total candidates, average experience, distinct skill count,
+    average composite score, top 10 skills by candidate count, and
+    score distribution across performance tiers (excellent, good, average, below_average).
+    """
     try:
-        # Total candidates
-        total_candidates_query = "SELECT COUNT(*) FROM gold.dim_candidates"
-        total_candidates = db.execute(total_candidates_query).scalar()
-        
-        # Average experience
-        avg_exp_query = "SELECT AVG(years_experience) FROM gold.dim_candidates"
-        avg_experience = db.execute(avg_exp_query).scalar() or 0
-        
-        # Total skills
-        total_skills_query = "SELECT COUNT(DISTINCT skill_name) FROM gold.dim_skills"
-        total_skills = db.execute(total_skills_query).scalar()
-        
-        # Average score
-        avg_score_query = "SELECT AVG(overall_score) FROM gold.agg_candidate_rankings"
-        avg_score = db.execute(avg_score_query).scalar() or 0
-        
-        # Top skills
-        top_skills_query = """
-            SELECT skill_name, candidate_count
-            FROM gold.dim_skills
-            ORDER BY candidate_count DESC
+        total_candidates = db.execute(
+            text("SELECT COUNT(*) FROM gold.dim_candidates WHERE is_current = TRUE")
+        ).scalar()
+
+        avg_experience = db.execute(
+            text("SELECT AVG(years_experience) FROM gold.dim_candidates WHERE is_current = TRUE")
+        ).scalar() or 0
+
+        total_skills = db.execute(
+            text("SELECT COUNT(DISTINCT skill_name) FROM silver.resume_skills")
+        ).scalar()
+
+        avg_score = db.execute(
+            text("SELECT AVG(total_score) FROM gold.agg_candidate_rankings")
+        ).scalar() or 0
+
+        top_skills_result = db.execute(text("""
+            SELECT skill_name, COUNT(DISTINCT candidate_id) as cnt
+            FROM silver.resume_skills
+            GROUP BY skill_name
+            ORDER BY cnt DESC
             LIMIT 10
-        """
-        top_skills_result = db.execute(top_skills_query)
+        """))
         top_skills = [
             {"skill": row[0], "count": row[1]}
             for row in top_skills_result.fetchall()
         ]
-        
-        # Score distribution
-        score_dist_query = """
-            SELECT 
-                performance_tier,
+
+        score_dist_result = db.execute(text("""
+            SELECT
+                CASE
+                    WHEN total_score >= 200 THEN 'excellent'
+                    WHEN total_score >= 150 THEN 'good'
+                    WHEN total_score >= 100 THEN 'average'
+                    ELSE 'below_average'
+                END as tier,
                 COUNT(*) as count
             FROM gold.agg_candidate_rankings
-            GROUP BY performance_tier
-        """
-        score_dist_result = db.execute(score_dist_query)
+            GROUP BY tier
+        """))
         score_distribution = {
             row[0]: row[1]
             for row in score_dist_result.fetchall()
         }
-        
+
         return {
             "total_candidates": total_candidates,
-            "avg_experience": round(avg_experience, 2),
+            "avg_experience": round(float(avg_experience), 2),
             "total_skills": total_skills,
-            "avg_score": round(avg_score, 2),
+            "avg_score": round(float(avg_score), 2),
             "top_skills": top_skills,
             "score_distribution": score_distribution
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/pipeline-health")
 async def get_pipeline_health(db: Session = Depends(get_db)):
-    """Get pipeline execution health metrics."""
+    """
+    Get data pipeline health metrics for the last 7 days.
+
+    Returns per-pipeline statistics: total runs, successful runs,
+    success rate percentage, last run timestamp, and average duration in seconds.
+    """
     try:
         query = """
-            SELECT 
+            SELECT
                 pipeline_name,
                 COUNT(*) as total_runs,
-                SUM(CASE WHEN run_status = 'success' THEN 1 ELSE 0 END) as successful_runs,
-                AVG(execution_time_seconds) as avg_execution_time,
-                MAX(run_date) as last_run
+                SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_runs,
+                MAX(run_date) as last_run,
+                AVG(EXTRACT(EPOCH FROM (completed_at - started_at)))::DECIMAL as avg_duration_seconds
             FROM metadata.pipeline_runs
             WHERE run_date >= CURRENT_DATE - INTERVAL '7 days'
             GROUP BY pipeline_name
         """
-        
-        result = db.execute(query)
+
+        result = db.execute(text(query))
         pipelines = result.fetchall()
-        
+
         return [
             {
                 "pipeline": row[0],
                 "total_runs": row[1],
                 "successful_runs": row[2],
                 "success_rate": round((row[2] / row[1]) * 100, 2) if row[1] > 0 else 0,
-                "avg_execution_time": round(row[3], 2) if row[3] else 0,
-                "last_run": row[4].isoformat() if row[4] else None
+                "last_run": row[3].isoformat() if row[3] else None,
+                "avg_duration_seconds": round(float(row[4]), 2) if row[4] else 0,
             }
             for row in pipelines
         ]
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/trends/hiring")
 async def get_hiring_trends(db: Session = Depends(get_db)):
-    """Get hiring trends and insights."""
+    """
+    Get hiring trends and talent pool insights.
+
+    Returns experience distribution (0-2, 2-5, 5-10, 10+ years) and
+    education level distribution, each with candidate counts and
+    average composite scores.
+    """
     try:
-        # Experience distribution
-        exp_dist_query = """
-            SELECT 
-                CASE 
-                    WHEN years_experience < 2 THEN '0-2 years'
-                    WHEN years_experience < 5 THEN '2-5 years'
-                    WHEN years_experience < 10 THEN '5-10 years'
+        exp_result = db.execute(text("""
+            SELECT
+                CASE
+                    WHEN dc.years_experience < 2 THEN '0-2 years'
+                    WHEN dc.years_experience < 5 THEN '2-5 years'
+                    WHEN dc.years_experience < 10 THEN '5-10 years'
                     ELSE '10+ years'
                 END as experience_range,
                 COUNT(*) as count,
-                AVG(c.github_score) as avg_github_score
-            FROM gold.dim_candidates c
-            JOIN gold.agg_candidate_rankings r ON c.candidate_id = r.candidate_id
+                AVG(r.total_score)::DECIMAL as avg_score
+            FROM gold.dim_candidates dc
+            LEFT JOIN gold.agg_candidate_rankings r ON dc.candidate_key = r.candidate_key
+            WHERE dc.is_current = TRUE
             GROUP BY experience_range
-            ORDER BY MIN(years_experience)
-        """
-        
-        exp_result = db.execute(exp_dist_query)
+            ORDER BY MIN(dc.years_experience)
+        """))
         experience_distribution = [
             {
                 "range": row[0],
                 "count": row[1],
-                "avg_github_score": round(row[2], 2) if row[2] else 0
+                "avg_score": round(float(row[2]), 2) if row[2] else 0
             }
             for row in exp_result.fetchall()
         ]
-        
-        # Education distribution
-        edu_dist_query = """
-            SELECT 
-                education_level,
+
+        edu_result = db.execute(text("""
+            SELECT
+                dc.education_level,
                 COUNT(*) as count,
-                AVG(r.overall_score) as avg_score
-            FROM gold.dim_candidates c
-            JOIN gold.agg_candidate_rankings r ON c.candidate_id = r.candidate_id
-            GROUP BY education_level
-            ORDER BY AVG(r.overall_score) DESC
-        """
-        
-        edu_result = db.execute(edu_dist_query)
+                AVG(r.total_score)::DECIMAL as avg_score
+            FROM gold.dim_candidates dc
+            LEFT JOIN gold.agg_candidate_rankings r ON dc.candidate_key = r.candidate_key
+            WHERE dc.is_current = TRUE
+            GROUP BY dc.education_level
+            ORDER BY avg_score DESC NULLS LAST
+        """))
         education_distribution = [
             {
                 "level": row[0],
                 "count": row[1],
-                "avg_score": round(row[2], 2) if row[2] else 0
+                "avg_score": round(float(row[2]), 2) if row[2] else 0
             }
             for row in edu_result.fetchall()
         ]
-        
+
         return {
             "experience_distribution": experience_distribution,
             "education_distribution": education_distribution
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

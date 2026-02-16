@@ -1,28 +1,21 @@
 """
 Database models and connection
 """
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, Text
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# Database URL
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://airflow:airflow@postgres:5432/devscout"
+    "postgresql://devscout:devscout_pass@postgres:5432/devscout_dw"
 )
 
-# Create engine
 engine = create_engine(DATABASE_URL)
-
-# Session maker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Base class
 Base = declarative_base()
 
 
-# Database dependency
 def get_db():
     """Get database session."""
     db = SessionLocal()

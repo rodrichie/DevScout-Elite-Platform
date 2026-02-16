@@ -4,9 +4,8 @@ Authentication router - OAuth2 token endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-from typing import Optional
 
-from ..middleware.auth import (
+from middleware.auth import (
     authenticate_user,
     create_access_token,
     get_current_active_user,
@@ -19,11 +18,17 @@ router = APIRouter()
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
-    OAuth2 token endpoint for authentication.
-    
-    Default credentials:
-    - Username: admin, Password: secret
-    - Username: recruiter, Password: secret
+    Obtain an OAuth2 access token.
+
+    Submit `username` and `password` as form data to receive a JWT bearer token.
+    The token expires after 30 minutes.
+
+    **Default credentials:**
+
+    | Username | Password | Role |
+    |----------|----------|------|
+    | admin | secret | admin |
+    | recruiter | secret | recruiter |
     """
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -32,13 +37,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["username"], "role": user["role"]},
         expires_delta=access_token_expires
     )
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -53,7 +58,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_active_user)):
-    """Get current authenticated user information."""
+    """
+    Get the current authenticated user's profile.
+
+    Requires a valid Bearer token in the Authorization header.
+    Returns the user's username, email, and role.
+    """
     return {
         "username": current_user["username"],
         "email": current_user["email"],
@@ -64,7 +74,10 @@ async def read_users_me(current_user: dict = Depends(get_current_active_user)):
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_active_user)):
     """
-    Logout endpoint (client should discard token).
+    Logout the current user.
+
+    Since JWT tokens are stateless, the client should discard the token
+    after calling this endpoint. Returns a confirmation message.
     """
     return {
         "message": "Successfully logged out",

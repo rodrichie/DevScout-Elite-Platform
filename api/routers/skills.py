@@ -3,84 +3,84 @@ Skills router - Skills analytics and statistics
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from sqlalchemy import text
+from typing import Optional
 
-from ..models.database import get_db
-from ..models.schemas import SkillResponse
+from models.database import get_db
 
 router = APIRouter()
 
 
-@router.get("/", response_model=List[SkillResponse])
+@router.get("/")
 async def get_skills(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     category: Optional[str] = None,
-    min_candidates: int = Query(1, ge=1),
     db: Session = Depends(get_db)
 ):
     """
-    Get list of skills with popularity metrics.
-    
-    - **skip**: Number of records to skip
-    - **limit**: Maximum number of records to return
-    - **category**: Filter by skill category
-    - **min_candidates**: Minimum number of candidates with skill
+    Get list of skills with candidate counts.
+
+    Returns skills aggregated from resume extractions, ordered by the number
+    of candidates possessing each skill. Supports filtering by skill category.
     """
     try:
         query = """
-            SELECT 
-                skill_name,
-                skill_category,
-                candidate_count,
-                total_occurrences
-            FROM gold.dim_skills
-            WHERE candidate_count >= :min_candidates
+            SELECT
+                rs.skill_name,
+                rs.skill_category,
+                COUNT(DISTINCT rs.candidate_id) as candidate_count
+            FROM silver.resume_skills rs
+            WHERE 1=1
         """
-        
-        params = {"min_candidates": min_candidates, "limit": limit, "skip": skip}
-        
+
+        params = {"limit": limit, "skip": skip}
+
         if category:
-            query += " AND skill_category = :category"
+            query += " AND rs.skill_category = :category"
             params['category'] = category
-        
+
+        query += " GROUP BY rs.skill_name, rs.skill_category"
         query += " ORDER BY candidate_count DESC LIMIT :limit OFFSET :skip"
-        
-        result = db.execute(query, params)
+
+        result = db.execute(text(query), params)
         skills = result.fetchall()
-        
+
         return [
             {
                 "skill_name": row[0],
                 "skill_category": row[1],
                 "candidate_count": row[2],
-                "total_occurrences": row[3],
-                "proficiency_level": "Various"
             }
             for row in skills
         ]
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/categories")
 async def get_skill_categories(db: Session = Depends(get_db)):
-    """Get list of all skill categories with counts."""
+    """
+    Get all skill categories with skill and candidate counts.
+
+    Returns each category (e.g., Programming Language, Framework, Database)
+    along with how many distinct skills and candidates belong to it.
+    """
     try:
         query = """
-            SELECT 
+            SELECT
                 skill_category,
                 COUNT(DISTINCT skill_name) as skill_count,
-                SUM(candidate_count) as total_candidates
-            FROM gold.dim_skills
+                COUNT(DISTINCT candidate_id) as candidate_count
+            FROM silver.resume_skills
             GROUP BY skill_category
-            ORDER BY total_candidates DESC
+            ORDER BY candidate_count DESC
         """
-        
-        result = db.execute(query)
+
+        result = db.execute(text(query))
         categories = result.fetchall()
-        
+
         return [
             {
                 "category": row[0],
@@ -89,7 +89,7 @@ async def get_skill_categories(db: Session = Depends(get_db)):
             }
             for row in categories
         ]
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -99,32 +99,41 @@ async def get_trending_skills(
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db)
 ):
-    """Get trending skills based on recent activity."""
+    """
+    Get currently trending skills.
+
+    Returns skills flagged as trending in the gold layer dimension table,
+    along with the number of candidates who have each skill.
+    """
     try:
         query = """
-            SELECT 
-                skill_name,
-                skill_category,
-                candidate_count,
-                last_seen_at
-            FROM gold.dim_skills
-            WHERE last_seen_at >= CURRENT_DATE - INTERVAL '30 days'
-            ORDER BY candidate_count DESC, last_seen_at DESC
+            SELECT
+                ds.skill_name,
+                ds.skill_category,
+                ds.skill_family,
+                ds.is_trending,
+                COUNT(DISTINCT rs.candidate_id) as candidate_count
+            FROM gold.dim_skills ds
+            LEFT JOIN silver.resume_skills rs ON ds.skill_name = rs.skill_name
+            WHERE ds.is_trending = TRUE
+            GROUP BY ds.skill_key, ds.skill_name, ds.skill_category, ds.skill_family, ds.is_trending
+            ORDER BY candidate_count DESC
             LIMIT :limit
         """
-        
-        result = db.execute(query, {"limit": limit})
+
+        result = db.execute(text(query), {"limit": limit})
         skills = result.fetchall()
-        
+
         return [
             {
                 "skill_name": row[0],
                 "skill_category": row[1],
-                "candidate_count": row[2],
-                "last_seen": row[3].isoformat() if row[3] else None
+                "skill_family": row[2],
+                "is_trending": row[3],
+                "candidate_count": row[4],
             }
             for row in skills
         ]
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
