@@ -1,32 +1,19 @@
 #!/bin/bash
 set -e
 
-# ============================================
-# DevScout Elite - PostgreSQL Initialization
-# ============================================
+echo "Initializing DevScout databases..."
 
-echo "🚀 Initializing DevScout databases..."
-
-# Create multiple databases
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- Create additional databases
-    CREATE DATABASE airflow_db;
-    CREATE DATABASE mlflow_db;
-    CREATE DATABASE feast_db;
-
-    -- Enable pgvector extension for vector search
+    -- Enable pgvector extension
     CREATE EXTENSION IF NOT EXISTS vector;
 
-    -- Create schemas in main database
+    -- Create schemas
     CREATE SCHEMA IF NOT EXISTS bronze;
     CREATE SCHEMA IF NOT EXISTS silver;
     CREATE SCHEMA IF NOT EXISTS gold;
     CREATE SCHEMA IF NOT EXISTS metadata;
 
-    -- ========================================
-    -- BRONZE LAYER (Raw Data)
-    -- ========================================
-    
+    -- BRONZE LAYER
     CREATE TABLE IF NOT EXISTS bronze.raw_resumes (
         id SERIAL PRIMARY KEY,
         file_key VARCHAR(500) NOT NULL,
@@ -58,10 +45,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- ========================================
-    -- SILVER LAYER (Cleansed & Enriched)
-    -- ========================================
-
+    -- SILVER LAYER
     CREATE TABLE IF NOT EXISTS silver.candidates (
         candidate_id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -116,10 +100,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         scored_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- ========================================
-    -- GOLD LAYER (Business Logic)
-    -- ========================================
-
+    -- GOLD LAYER
     CREATE TABLE IF NOT EXISTS gold.dim_candidates (
         candidate_key SERIAL PRIMARY KEY,
         candidate_id INTEGER UNIQUE NOT NULL,
@@ -165,10 +146,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         UNIQUE(candidate_key, ranking_date)
     );
 
-    -- ========================================
     -- METADATA LAYER
-    -- ========================================
-
     CREATE TABLE IF NOT EXISTS metadata.pipeline_runs (
         run_id SERIAL PRIMARY KEY,
         pipeline_name VARCHAR(255) NOT NULL,
@@ -191,28 +169,19 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
         checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- ========================================
-    -- INDEXES FOR PERFORMANCE
-    -- ========================================
-
+    -- INDEXES
     CREATE INDEX IF NOT EXISTS idx_candidates_email ON silver.candidates(email);
     CREATE INDEX IF NOT EXISTS idx_candidates_github ON silver.candidates(github_username);
     CREATE INDEX IF NOT EXISTS idx_resume_skills_candidate ON silver.resume_skills(candidate_id);
     CREATE INDEX IF NOT EXISTS idx_github_profiles_candidate ON silver.github_profiles(candidate_id);
     CREATE INDEX IF NOT EXISTS idx_coding_scores_candidate ON silver.coding_challenge_scores(candidate_id);
-    
     CREATE INDEX IF NOT EXISTS idx_fact_scores_candidate ON gold.fact_candidate_scores(candidate_key);
     CREATE INDEX IF NOT EXISTS idx_fact_scores_date ON gold.fact_candidate_scores(score_date);
-    
     CREATE INDEX IF NOT EXISTS idx_pipeline_runs_name_date ON metadata.pipeline_runs(pipeline_name, run_date);
 
-    -- ========================================
-    -- INITIAL SEED DATA
-    -- ========================================
-
-    -- Insert sample skills taxonomy
+    -- SEED DATA
     INSERT INTO gold.dim_skills (skill_name, skill_category, skill_family, is_trending)
-    VALUES 
+    VALUES
         ('Python', 'Programming Language', 'Backend', TRUE),
         ('Java', 'Programming Language', 'Backend', TRUE),
         ('JavaScript', 'Programming Language', 'Frontend', TRUE),
@@ -232,8 +201,15 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 
 EOSQL
 
-echo "✅ Database initialization complete!"
-echo "   - Schemas created: bronze, silver, gold, metadata"
-echo "   - Tables created: 15 tables across all layers"
-echo "   - Indexes created for performance optimization"
-echo "   - Sample skill taxonomy loaded"
+echo "Database initialization complete."
+
+# Create additional databases
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    SELECT 'CREATE DATABASE airflow_db OWNER devscout'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'airflow_db')\gexec
+
+    SELECT 'CREATE DATABASE mlflow_db OWNER devscout'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'mlflow_db')\gexec
+EOSQL
+
+echo "Additional databases created."
